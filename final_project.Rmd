@@ -1,0 +1,195 @@
+---
+title: "Final Project"
+author: ""
+date: ""
+output:
+  pdf_document:
+    fig_height: 3
+    fig_width: 5
+  html_document:
+    fig_height: 3
+    fig_width: 5
+  word_document:
+    fig_height: 3
+    fig_width: 5
+---
+
+
+```{r, include=FALSE}
+# Don't delete this chunk if you are using the mosaic package
+# This loads the mosaic and dplyr packages
+require(mosaic)
+```
+
+```{r, include=FALSE}
+# Some customization.  You can alter or delete as desired (if you know what you are doing).
+
+# This changes the default colors in lattice plots.
+trellis.par.set(theme=theme.mosaic())  
+
+# knitr settings to control how R chunks work.
+require(knitr)
+opts_chunk$set(
+  tidy=FALSE,     # display code as typed
+  size="small"    # slightly smaller font for code
+)
+# This loads the mosaic data sets.  (Could be deleted if you are not using them.)
+require(mosaicData)                
+```
+
+
+```{r include=FALSE}
+library(knitr)
+require(mosaic)
+#opts_chunk$set(eval=FALSE)
+```
+
+```{r load-data}
+airline_delay <- read.csv("Airline_Delay_Cause.csv", as.is=T)
+```
+
+```{r names}
+names(airline_delay)
+```
+```{r airline-delay}
+summary(airline_delay)
+```
+
+```{r}
+head(airline_delay)
+```
+
+
+###SLR
+```{r}
+pairs(airline_delay[, c("arr_delay","carrier_delay", "weather_delay", "nas_delay", "security_delay", "late_aircraft_delay")],
+      main = "Scatter Plot Matrix of Delay Types",
+      pch = 19,  
+      col = "blue")  
+
+```
+### Linear Regression Model for Arrival delay vs. carrier delay
+```{r}
+arr_carrier_model <- lm(arr_delay~carrier_delay, data = airline_delay)
+
+summary(arr_carrier_model)
+```
+```{r}
+xyplot(arr_delay~carrier_delay, data = airline_delay, type = c("p","r"))
+
+```
+
+### Linear Regression Model for Arrival delay vs. weather delay
+```{r}
+arr_weather_model <- lm(arr_delay~weather_delay, data = airline_delay)
+
+summary(arr_weather_model)
+```
+
+```{r}
+xyplot(arr_delay~weather_delay, data = airline_delay, type = c("p","r"))
+
+```
+### Linear Regression Model for Arrival delay vs. national air system (nas) delay
+```{r}
+arr_nas_model <- lm(arr_delay~nas_delay, data = airline_delay)
+
+summary(arr_nas_model)
+```
+```{r}
+xyplot(arr_delay~nas_delay, data = airline_delay, type = c("p","r"))
+```
+### Linear Regression Model for Arrival delay vs. security delay
+```{r}
+arr_sec_model <- lm(arr_delay~security_delay, data = airline_delay)
+
+summary(arr_sec_model)
+```
+
+```{r}
+xyplot(arr_delay~security_delay, data = airline_delay, type = c("p","r"))
+```
+### Linear Regression Model for Arrival delay vs. late aircraft delay
+```{r}
+arr_la_model <- lm(arr_delay~late_aircraft_delay, data = airline_delay)
+
+summary(arr_la_model)
+```
+```{r}
+xyplot(arr_delay~late_aircraft_delay, data = airline_delay, type = c("p","r"))
+```
+###Late aircraft delay is the main causes of delay
+
+###Plots to check the assumptions of the linear model for arrival delay vs. late aircraft delay
+
+```{r}
+xyplot(resid(arr_la_model) ~ fitted(arr_la_model), data=airline_delay, type=c("p","r"))
+```
+```{r}
+histogram(~residuals((arr_la_model)))
+```
+```{r}
+qqmath(~resid(arr_la_model))
+```
+```{r}
+ladd(panel.qqmathline(resid(arr_la_model)))
+```
+```{r}
+library(tidyverse)
+# Clean the data by removing rows with NAs
+airline_delay <- na.omit(airline_delay)
+
+# Calculate the mean and standard deviation of arrival delays
+mean_arr_delay <- mean(airline_delay$arr_delay)
+sd_arr_delay <- sd(airline_delay$arr_delay)
+
+# Number of observations
+n <- length(airline_delay$arr_delay)
+
+# Calculate the confidence interval
+conf_interval <- t.test(airline_delay$arr_delay)$conf.int
+conf_interval
+
+# Print the results with more descriptive outputs
+```
+
+```{r}
+cat("Statistical Summary of Arrival Delays:\n")
+cat("Mean Arrival Delay:", round(mean_arr_delay, 2), "minutes\n")
+cat("Standard Deviation:", round(sd_arr_delay, 2), "minutes\n")
+cat("Number of Observations:", n, "\n")
+cat("95% Confidence Interval for the Mean Arrival Delay: [", round(conf_interval[1], 2), ",", round(conf_interval[2], 2), "] minutes\n")
+```
+```{r}
+# Plot histogram of arrival delays with normal curve
+hist(airline_delay$arr_delay, breaks = 30, probability = TRUE,
+     main = "Histogram of Arrival Delays with Normal Curve",
+     xlab = "Arrival Delay (minutes)", col = "lightblue", ylim = c(0, 2.5e-05),
+     xlim = c(0, 150000))
+
+# Add normal curve
+x <- seq(min(airline_delay$arr_delay), max(airline_delay$arr_delay), length = 100)
+y <- dnorm(x, mean = mean_arr_delay, sd = sd_arr_delay)
+lines(x, y, col = "red", lwd = 2)
+
+# Add mean line
+abline(v = mean_arr_delay, col = "blue", lwd = 2)
+
+# Add confidence interval lines
+abline(v = conf_interval[1], col = "green", lwd = 2, lty = 2)
+abline(v = conf_interval[2], col = "green", lwd = 2, lty = 2)
+
+# Display the mean and confidence interval on the plot
+legend("topright", legend = c(paste("Mean =", round(mean_arr_delay, 2)),
+                              paste("95% CI =", round(conf_interval[1], 2), "-", round(conf_interval[2], 2))),
+       col = c("blue", "green"), lwd = 2, lty = c(1, 2), bty = "n")
+```
+```{r}
+high_traffic <- filter(airline_delay, arr_flights > 700)
+low_traffic <- filter(airline_delay, arr_flights <= 700)
+```
+```{r}
+t_test_result <- t.test(high_traffic$arr_delay, low_traffic$arr_delay, na.rm = TRUE)
+t_test_result
+```
+
